@@ -1,0 +1,13 @@
+create extension if not exists "uuid-ossp";
+create table if not exists vamosgolf_profiles (id uuid primary key references auth.users(id) on delete cascade,email text unique,full_name text,role text check (role in ('admin','editor','client')) default 'client',created_at timestamptz default now());
+create table if not exists vamosgolf_trips (id uuid primary key default uuid_generate_v4(),slug text unique,title jsonb not null,description jsonb,image_url text,base_price_cents integer not null,currency text default 'EUR',vat_included boolean default true,min_participants int not null,max_participants int not null,status text check (status in ('draft','published')) default 'draft',created_by uuid references vamosgolf_profiles(id),created_at timestamptz default now());
+create table if not exists vamosgolf_trip_packages (id uuid primary key default uuid_generate_v4(),trip_id uuid references vamosgolf_trips(id) on delete cascade,title jsonb not null,description jsonb,image_url text,price_delta_cents integer not null default 0,active boolean default true);
+create table if not exists vamosgolf_trip_dates (id uuid primary key default uuid_generate_v4(),trip_id uuid references vamosgolf_trips(id) on delete cascade,start_date date not null,end_date date not null,min_participants int not null,max_participants int not null,current_bookings int not null default 0,supplier_policy jsonb,status text check (status in ('planned','confirmed','cancelled')) default 'planned');
+create table if not exists vamosgolf_bookings (id uuid primary key default uuid_generate_v4(),user_id uuid references vamosgolf_profiles(id),trip_id uuid references vamosgolf_trips(id),trip_date_id uuid references vamosgolf_trip_dates(id),package_ids uuid[] default '{}',persons int not null default 1,deposit_percent int not null default 20,deposit_amount_cents int not null,rest_amount_cents int not null,auto_charge_rest boolean not null default false,stripe_customer_id text,stripe_checkout_session_id text,latest_payment_intent text,payment_status text check (payment_status in ('none','deposit_paid','paid','refunded','failed')) default 'none',created_at timestamptz default now());
+create table if not exists vamosgolf_cancel_rules (id serial primary key,trip_id uuid references vamosgolf_trips(id) on delete cascade,rule jsonb not null);
+alter table vamosgolf_profiles enable row level security;
+alter table vamosgolf_trips enable row level security;
+alter table vamosgolf_trip_packages enable row level security;
+alter table vamosgolf_trip_dates enable row level security;
+alter table vamosgolf_bookings enable row level security;
+alter table vamosgolf_cancel_rules enable row level security;
