@@ -1,23 +1,27 @@
-import { NextResponse } from "next/server";
-import Stripe from "stripe";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-09-30",
-});
+import { NextResponse } from "next/server"
+import { stripe } from "@/lib/stripe"
+import { supabaseServer } from "@/lib/supabaseServer"
 
 export async function POST(req: Request) {
   try {
-    const { trip_id, user_id, trip_date_id, amount_cents } = await req.json();
+    const { trip_id, trip_date_id, persons, package_ids, amount_cents } = await req.json()
 
     if (!amount_cents || amount_cents <= 0) {
-      console.error("❌ Kein Betrag übergeben:", amount_cents);
       return NextResponse.json(
-        { error: "Ungültiger oder fehlender Betrag" },
+        { error: "Ungültiger Betrag" },
         { status: 400 }
-      );
+      )
     }
 
-    // Session erstellen
+    // Get user (or use guest data later)
+    const supabase = await supabaseServer()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    // Calculate deposit (20%) and rest
+    const deposit_amount = amount_cents
+    const rest_amount = 0 // For now, full payment upfront
+
+    // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
@@ -26,29 +30,34 @@ export async function POST(req: Request) {
           price_data: {
             currency: "eur",
             product_data: {
-              name: "VamosGolf Reisebuchung",
-              description: "Golfreise oder Paket",
+              name: "VamosGolf Golfreise",
+              description: "Buchung einer Golfreise",
             },
-            unit_amount: amount_cents, // Betrag in Cent!
+            unit_amount: amount_cents,
           },
           quantity: 1,
         },
       ],
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/shop`,
+      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/reisen`,
       metadata: {
-        trip_id,
-        user_id,
-        trip_date_id,
+        user_id: user?.id || 'guest',
+        trip_id: trip_id || '',
+        trip_date_id: trip_date_id || '',
+        persons: String(persons || 1),
+        package_ids: JSON.stringify(package_ids || []),
+        deposit_percent: '100', // Full payment for now
+        rest_amount_cents: String(rest_amount),
+        auto_charge_rest: 'false',
       },
-    });
+    })
 
-    return NextResponse.json({ url: session.url });
-  } catch (error) {
-    console.error("❌ Stripe-Fehler:", error);
+    return NextResponse.json({ url: session.url })
+  } catch (error: any) {
+    console.error("❌ Stripe checkout error:", error)
     return NextResponse.json(
-      { error: "Stripe checkout failed" },
+      { error: error.message || "Checkout fehlgeschlagen" },
       { status: 500 }
-    );
+    )
   }
 }

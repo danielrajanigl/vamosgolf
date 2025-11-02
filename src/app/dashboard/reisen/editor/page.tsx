@@ -1,153 +1,194 @@
-"use client";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { supabaseBrowser } from "@/lib/supabaseClient";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
-import TiptapEditor from "@/components/Editor/TiptapEditor";
+"use client"
 
-const schema = z.object({
-  title_de: z.string().min(3),
-  title_en: z.string().optional(),
-  title_es: z.string().optional(),
-  base_price_cents: z.number().min(1),
-  status: z.enum(["draft", "published"]),
-});
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
-type FormData = z.infer<typeof schema>;
+export default function TripEditorPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const tripId = searchParams.get('id')
+  
+  const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    title: '',
+    destination: '',
+    description: '',
+    highlights: [] as string[],
+    base_price_cents: 129900,
+    status: 'draft',
+    image_url: '',
+  })
 
-export default function ReiseEditor() {
-  const {
-    register,
-    handleSubmit,
-    formState: { isSubmitting },
-    reset,
-  } = useForm<FormData>({ resolver: zodResolver(schema) });
-  const router = useRouter();
-  const sb = supabaseBrowser();
-  const [image, setImage] = useState<File | null>(null);
-  const [description, setDescription] = useState("");
-  const [status, setStatus] = useState<"draft" | "published">("draft");
+  useEffect(() => {
+    if (tripId) {
+      fetchTrip()
+    }
+  }, [tripId])
 
-  async function onSubmit(data: FormData) {
+  async function fetchTrip() {
+    const res = await fetch(`/api/trips/${tripId}`)
+    const data = await res.json()
+    setFormData(data)
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+
     try {
-      let imageUrl: string | null = null;
-      if (image) {
-        const { data: upload, error } = await sb.storage
-          .from("reisen_images")
-          .upload(`${Date.now()}_${image.name}`, image);
-        if (error) throw error;
-        const { data: urlData } = sb.storage
-          .from("reisen_images")
-          .getPublicUrl(upload.path);
-        imageUrl = urlData.publicUrl;
-      }
+      const url = tripId ? `/api/trips/${tripId}` : '/api/trips'
+      const method = tripId ? 'PUT' : 'POST'
 
-      const { error } = await sb.from("vamosgolf_trips").insert({
-        slug: data.title_de.toLowerCase().replace(/ /g, "-"),
-        title: { de: data.title_de, en: data.title_en, es: data.title_es },
-        base_price_cents: data.base_price_cents,
-        image_url: imageUrl,
-        description: { de: description },
-        status: status,
-      });
-      if (error) throw error;
-      reset();
-      router.push("/dashboard/reisen");
-    } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      })
+
+      if (res.ok) {
+        router.push('/dashboard/reisen')
+      } else {
+        const error = await res.json()
+        alert('Fehler: ' + (error.error || 'Unbekannter Fehler'))
+      }
+    } catch (error) {
+      alert('Fehler beim Speichern')
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 max-w-7xl mx-auto p-6">
-      <div className="space-y-6">
-        <Card className="p-6 space-y-4 shadow-sm border bg-white">
-          <Label>Titel (Deutsch)</Label>
-          <Input {...register("title_de")} placeholder="Golfreise Andalusien" />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">
+          {tripId ? 'Reise bearbeiten' : 'Neue Reise erstellen'}
+        </h1>
+        <p className="text-gray-600">Grundlegende Informationen zur Golfreise</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-white rounded-lg shadow p-6 space-y-6">
+          <div>
+            <Label htmlFor="title">Titel *</Label>
+            <Input
+              id="title"
+              required
+              placeholder="z.B. Portugal Algarve Golf"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="destination">Destination *</Label>
+            <Input
+              id="destination"
+              required
+              placeholder="z.B. Algarve, Portugal"
+              value={formData.destination}
+              onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="description">Beschreibung</Label>
+            <Textarea
+              id="description"
+              rows={4}
+              placeholder="Kurze Beschreibung der Reise..."
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="highlights">Highlights (eins pro Zeile)</Label>
+            <Textarea
+              id="highlights"
+              rows={6}
+              placeholder="Top Golfplätze&#10;Luxushotel am Strand&#10;Professionelles Coaching"
+              value={formData.highlights.join('\n')}
+              onChange={(e) => setFormData({ 
+                ...formData, 
+                highlights: e.target.value.split('\n').filter(h => h.trim()) 
+              })}
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Englisch</Label>
-              <Input
-                {...register("title_en")}
-                placeholder="Golf trip Andalusia"
-              />
+              <Label htmlFor="base_price_cents">Basispreis (Cent)</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="base_price_cents"
+                  type="number"
+                  min="0"
+                  step="100"
+                  value={formData.base_price_cents}
+                  onChange={(e) => setFormData({ ...formData, base_price_cents: parseInt(e.target.value) })}
+                />
+                <span className="text-sm text-gray-600">
+                  = {(formData.base_price_cents / 100).toFixed(2)}€
+                </span>
+              </div>
             </div>
+
             <div>
-              <Label>Spanisch</Label>
-              <Input
-                {...register("title_es")}
-                placeholder="Viaje de golf Andalucía"
-              />
+              <Label htmlFor="status">Status</Label>
+              <select
+                id="status"
+                className="w-full border rounded-md p-2"
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+              >
+                <option value="draft">Entwurf</option>
+                <option value="published">Veröffentlicht</option>
+              </select>
             </div>
           </div>
 
           <div>
-            <Label>Beschreibung</Label>
-            <TiptapEditor value={description} onChange={setDescription} />
-          </div>
-        </Card>
-
-        <Card className="p-6 shadow-sm border bg-white">
-          <Label>Bild (Titelbild)</Label>
-          <Input
-            type="file"
-            onChange={(e) => setImage(e.target.files?.[0] || null)}
-          />
-        </Card>
-      </div>
-
-      <div className="space-y-4">
-        <Card className="p-5 shadow-sm border bg-white">
-          <h2 className="text-lg font-semibold mb-3">Veröffentlichung</h2>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm text-gray-600">Status:</span>
-            <select
-              {...register("status")}
-              onChange={(e) =>
-                setStatus(e.target.value as "draft" | "published")
-              }
-              className="border rounded-md text-sm px-2 py-1"
-            >
-              <option value="draft">Entwurf</option>
-              <option value="published">Veröffentlicht</option>
-            </select>
+            <Label htmlFor="image_url">Bild URL (optional)</Label>
+            <Input
+              id="image_url"
+              type="url"
+              placeholder="https://example.com/image.jpg"
+              value={formData.image_url}
+              onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+            />
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Button
-              type="submit"
-              onClick={handleSubmit(onSubmit)}
-              disabled={isSubmitting}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {isSubmitting ? "Speichern…" : "Veröffentlichen"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.push("/dashboard/reisen")}
-            >
-              Abbrechen
-            </Button>
-          </div>
-        </Card>
+          {formData.image_url && (
+            <div>
+              <Label>Vorschau</Label>
+              <img 
+                src={formData.image_url} 
+                alt="Preview" 
+                className="w-full max-w-md rounded-lg mt-2"
+                onError={() => alert('Bild konnte nicht geladen werden')}
+              />
+            </div>
+          )}
+        </div>
 
-        <Card className="p-5 shadow-sm border bg-white">
-          <h2 className="text-lg font-semibold mb-3">Preis</h2>
-          <Input
-            type="number"
-            {...register("base_price_cents", { valueAsNumber: true })}
-            placeholder="1299"
-          />
-        </Card>
-      </div>
+        <div className="flex gap-3">
+          <Button type="submit" disabled={loading}>
+            {loading ? 'Speichere...' : tripId ? 'Änderungen speichern' : 'Reise erstellen'}
+          </Button>
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={() => router.push('/dashboard/reisen')}
+          >
+            Abbrechen
+          </Button>
+        </div>
+      </form>
     </div>
-  );
+  )
 }
