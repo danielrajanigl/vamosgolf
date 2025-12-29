@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Simple multi-file applier for VamosGolf patches from stdin.
+# Patch format:
+#   # FILE: relative/path/to/file.tsx
+#   ...full file content...
+#   # END
+#
+# Usage:
+#   pbpaste | ./bin/vg-apply -g "commit message"
+#   cat patch.txt | ./bin/vg-apply --root /path/to/project
+
+ROOT="."
+DRY_RUN=0
+COMMIT_MSG=""
+
+usage() {
+  cat <<'USAGE'
+vg-apply - apply multi-file patches from stdin.
+
+Options:
+  -r, --root <path>     Project root (default: current dir)
+  -n, --dry-run         Don't write files, just show actions
+  -g, --git "<msg>"     git add/commit/push with given message
+  -h, --help            Show this help
+
+Input format:
+  # FILE: path/inside/project.ext
+  <file content>
+  # END
+Repeat for multiple files.
+USAGE
+}
+
+# --- parse args ---
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -r|--root) ROOT="${2:-.}"; shift 2;;
+    -n|--dry-run) DRY_RUN=1; shift;;
+    -g|--git) COMMIT_MSG="${2:-}"; shift 2;;
+    -h|--help) usage; exit 0;;
+    *) echo "Unknown option: $1"; usage; exit 1;;
+  esac
+done
+
+timestamp="$(date +%Y%m%d-%H%M%S)"
+BACKUP_DIR="$ROOT/.vg/backups/$timestamp"
+[[ $DRY_RUN -eq 1 ]] || mkdir -p "$BACKUP_DIR"
+
+current_file=""
+buffer=""
+declare -a written_files=()
+
+write_out() {
+  local rel="$1"
+  local content="$2"
+  local target="$ROOT/$rel"
+  local dir
+  dir="$(dirname "$target")"
+
+  if [[ $DRY_RUN -eq 1 ]]; then
+    echo "[DRY] Would write: $rel"
+    return
+  fi
+
+  mkdir -p "$dir"
+  if [[ -f "$target" ]]; then
+    mkdir -p "$BACKUP_DIR/$(dirname "$rel")"
+    cp "$target" "$BACKUP_DIR/$rel"
+  fi
+  printf "%s" "$content" > "$target"
+  written_files+=("$rel")
+  echo "[OK ] Wrote: $rel"
+}
+
+# Read stdin line by line
+while IFS= read -r line; do
+  if [[ "$line" =~ ^\#\ FILE:\ (.+)$ ]]; then
+    # flush previous if any
+    if [[ -n "$current_file" ]]; then
+      write_out "$current_file" "$buffer"
+      buffer=""
+    fi
+    current_file="${BASH_REMATCH[1]}"
+    continue
+  fi
+
+  if [[ "$line" == "# END" ]]; then
+    if [[ -z "$current_file" ]]; then
+      echo "Error: encountered '# END' without an active file" >&2
+      exit 1
+    fi
+    write_out "$current_file" "$buffer"
+    current_file=""
+    buffer=""
+    continue
+  fi
+
+  # accumulate content (preserve newlines)
+  buffer+="${line}"$'\n'
+done
+
+# End of input: if a file was open but not closed
+if [[ -n "$current_file" ]]; then
+  echo "Error: missing '# END' for file: $current_file" >&2
+  exit 1
+fi
+
+# Git commit/push if requested and not dry-run
+if [[ $DRY_RUN -eq 0 && -n "$COMMIT_MSG" ]]; then
+  if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    git -C "$ROOT" add -A
+    if git -C "$ROOT" diff --cached --quiet; then
+      echo "[GIT] No changes to commit."
+    else
+      git -C "$ROOT" commit -m "$COMMIT_MSG"
+      if git -C "$ROOT" rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
+        git -C "$ROOT" push
+        echo "[GIT] Pushed."
+      else
+        echo "[GIT] No upstream set; skipped push."
+      fi
+    fi
+  else
+    echo "[GIT] Not a git repo at $ROOT; skipping git actions."
+  fi
+fi
+
+if [[ ${#written_files[@]} -gt 0 ]]; then
+  echo
+  echo "Summary:"
+  for f in "${written_files[@]}"; do echo "  - $f"; done
+  [[ $DRY_RUN -eq 1 ]] || echo "Backups saved to: $BACKUP_DIR"
+fi

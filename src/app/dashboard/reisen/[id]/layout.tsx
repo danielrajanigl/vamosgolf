@@ -20,6 +20,10 @@ export default async function TripLayout({
 
   if (!trip) notFound()
 
+  const tripTitle = typeof trip.title === 'object'
+    ? (trip.title?.de || trip.title?.en || Object.values(trip.title || {})?.[0] || '')
+    : trip.title || 'Unbenannte Reise'
+
   const tabs = [
     { name: 'Allgemein', href: `/dashboard/reisen/${params.id}` },
     { name: 'Termine', href: `/dashboard/reisen/${params.id}/termine` },
@@ -31,7 +35,7 @@ export default async function TripLayout({
       <div className="flex justify-between items-start">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold">{trip.title}</h1>
+            <h1 className="text-3xl font-bold">{tripTitle}</h1>
             <span className={`px-2 py-1 rounded text-xs font-medium ${
               trip.status === 'published' 
                 ? 'bg-green-100 text-green-800' 
@@ -40,7 +44,9 @@ export default async function TripLayout({
               {trip.status === 'published' ? 'Veröffentlicht' : 'Entwurf'}
             </span>
           </div>
-          <p className="text-gray-600 mt-1">{trip.destination}</p>
+          {trip.destination && (
+            <p className="text-gray-600 mt-1">{trip.destination}</p>
+          )}
         </div>
         
         <Link href="/dashboard/reisen">

@@ -1,52 +1,65 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request: { headers: request.headers }
-  })
+  const res = NextResponse.next({ request: { headers: request.headers } });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
+        get: (name) => request.cookies.get(name)?.value,
+        set: (name, value, options: CookieOptions) => {
+          res.cookies.set({ name, value, ...options });
         },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({ name, value, ...options })
-          supabaseResponse.cookies.set({ name, value, ...options })
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({ name, value: '', ...options })
-          supabaseResponse.cookies.set({ name, value: '', ...options })
+        remove: (name, options: CookieOptions) => {
+          res.cookies.set({ name, value: "", ...options });
         },
       },
     }
-  )
+  );
 
-  const { data: { session } } = await supabase.auth.getSession()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (request.nextUrl.pathname.startsWith('/dashboard')) {
-    if (!session) {
-      return NextResponse.redirect(new URL('/login', request.url))
+  const path = request.nextUrl.pathname;
+
+  // /dashboard selbst erlauben - zeigt Login/Register wenn nicht eingeloggt
+  // Nur Unterrouten schützen
+  const isDashboardRoot = path === "/dashboard" || path === "/dashboard/";
+  
+  if (!isDashboardRoot && path.startsWith("/dashboard")) {
+    // Nicht eingeloggt → Login
+    if (!user) {
+      return NextResponse.redirect(new URL("/login?redirect=" + path, request.url));
     }
 
+    // Profilrolle prüfen für geschützte Routen
     const { data: profile } = await supabase
-      .from('vamosgolf_profiles')
-      .select('role')
-      .eq('id', session.user.id)
-      .single()
+      .from("vamosgolf_profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
 
-    if (!profile || !['admin', 'editor'].includes(profile.role)) {
-      return NextResponse.redirect(new URL('/', request.url))
+    const role = profile?.role;
+
+    // Zugriffskontrolle pro Rolle
+    if (path.startsWith("/dashboard/admin") && role !== "admin") {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    if (path.startsWith("/dashboard/editor") && !["admin", "editor"].includes(role)) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    if (path.startsWith("/dashboard/client") && role !== "client") {
+      return NextResponse.redirect(new URL("/", request.url));
     }
   }
 
-  return supabaseResponse
+  return res;
 }
 
 export const config = {
-  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)']
-}
+  matcher: ["/dashboard/:path*"],
+};

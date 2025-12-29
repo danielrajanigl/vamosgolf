@@ -3,15 +3,16 @@ import { supabaseServer } from "@/lib/supabaseServer"
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await supabaseServer()
+    const { id } = await params
 
     const { data: trip, error } = await supabase
       .from('vamosgolf_trips')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (error) {
@@ -26,11 +27,12 @@ export async function GET(
 
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const data = await req.json()
     const supabase = await supabaseServer()
+    const { id } = await params
 
     const { data: { user } } = await supabase.auth.getUser()
     
@@ -51,7 +53,7 @@ export async function PUT(
     const { data: trip, error } = await supabase
       .from('vamosgolf_trips')
       .update(data)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 

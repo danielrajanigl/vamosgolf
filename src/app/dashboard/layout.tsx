@@ -1,7 +1,6 @@
 import { supabaseServer } from "@/lib/supabaseServer"
-import { redirect } from "next/navigation"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { DashboardHeader } from "./DashboardHeader"
 
 export default async function DashboardLayout({
   children,
@@ -14,26 +13,40 @@ export default async function DashboardLayout({
   const { data: { user } } = await supabase.auth.getUser()
   
   if (!user) {
-    redirect("/login?redirect=/dashboard")
+    // Wenn nicht eingeloggt, Layout nicht rendern - die page.tsx zeigt Login/Register
+    return <>{children}</>
   }
 
-  // Check if user is admin or editor
+  // Get user role and profile for navigation
   const { data: profile } = await supabase
     .from("vamosgolf_profiles")
-    .select("role")
+    .select("role, full_name, email")
     .eq("id", user.id)
     .single()
 
-  if (!profile || !["admin", "editor"].includes(profile.role)) {
-    redirect("/")
-  }
+  const role = profile?.role || "client"
 
-  const links = [
+  // Navigation links based on role
+  const baseLinks = [
     { name: "Übersicht", href: "/dashboard" },
+  ]
+
+  const adminEditorLinks = [
     { name: "Reisen", href: "/dashboard/reisen" },
+    { name: "Leads", href: "/dashboard/leads" },
     { name: "Termine", href: "/dashboard/termine" },
     { name: "Preise", href: "/dashboard/preise" },
   ]
+
+  const adminOnlyLinks = role === "admin" 
+    ? [{ name: "Benutzer", href: "/dashboard/admin/users" }]
+    : []
+
+  const links = role === "admin"
+    ? [...baseLinks, ...adminEditorLinks, ...adminOnlyLinks]
+    : role === "editor"
+    ? [...baseLinks, ...adminEditorLinks]
+    : baseLinks
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -51,7 +64,14 @@ export default async function DashboardLayout({
           ))}
         </nav>
       </aside>
-      <main className="flex-1 p-8">{children}</main>
+      <div className="flex-1 flex flex-col">
+        <DashboardHeader 
+          user={user} 
+          profile={profile} 
+          role={role}
+        />
+        <main className="flex-1 p-8">{children}</main>
+      </div>
     </div>
   )
 }

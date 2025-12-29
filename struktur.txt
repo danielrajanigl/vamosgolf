@@ -1,41 +1,100 @@
-.
-├── README.md
-├── components.json
-├── eslint.config.mjs
-├── next-env.d.ts
-├── next.config.ts
-├── package-lock.json
-├── package.json
-├── postcss.config.js
-├── postcss.config.mjs
-├── public
-│   ├── favicon.ico
-│   ├── file.svg
-│   ├── globe.svg
-│   ├── next.svg
-│   ├── vercel.svg
-│   └── window.svg
-├── src
-│   ├── app
-│   │   ├── api
-│   │   ├── editor
-│   │   ├── favicon.ico
-│   │   ├── globals.css
-│   │   ├── layout.tsx
-│   │   ├── page.tsx
-│   │   └── reisen
-│   ├── components
-│   │   └── ui
-│   ├── lib
-│   │   ├── stripe.ts
-│   │   ├── supabaseClient.ts
-│   │   ├── supabaseServer.ts
-│   │   └── utils.ts
-│   └── supabase
-│       ├── rpc.sql
-│       └── schema.sql
-├── struktur.txt
-├── tailwind.config.js
-└── tsconfig.json
-
-11 directories, 28 files
+./middleware.ts
+./test-route.js
+./tailwind.config.js
+./app/success/page.tsx
+./app/shop/[id]/page.tsx
+./app/shop/page.tsx
+./app/test-checkout/page.tsx
+./app/reisen/page.tsx
+./app/reisen/[slug]/page.tsx
+./app/dashboard/reisen/[id]/termine/neu/page.tsx
+./app/dashboard/reisen/[id]/termine/page.tsx
+./app/dashboard/reisen/[id]/addons/page.tsx
+./app/dashboard/reisen/[id]/layout.tsx
+./app/dashboard/reisen/[id]/page.tsx
+./app/dashboard/reisen/page.tsx
+./app/dashboard/reisen/editor/page.tsx
+./app/dashboard/layout.tsx
+./app/dashboard/page.tsx
+./app/register/page.tsx
+./app/layout.tsx
+./app/api/trip-dates/route.ts
+./app/api/verify/route.ts
+./app/api/auth/callback/route.ts
+./app/api/checkout/route.ts
+./app/api/webhooks/stripe/route.ts
+./app/api/trips/route.ts
+./app/api/trips/[id]/addons/route.ts
+./app/api/trips/[id]/addons/[addonId]/route.ts
+./app/api/trips/[id]/route.ts
+./app/api/stripe/sync-product/route.ts
+./app/page.tsx
+./app/globals.css
+./app/login/page.tsx
+./.next/types/app/dashboard/reisen/page.ts
+./.next/types/app/dashboard/reisen/[id]/termine/neu/page.ts
+./.next/types/app/dashboard/reisen/[id]/termine/page.ts
+./.next/types/app/dashboard/reisen/[id]/page.ts
+./.next/types/app/dashboard/reisen/[id]/layout.ts
+./.next/types/app/dashboard/reisen/editor/page.ts
+./.next/types/app/dashboard/page.ts
+./.next/types/app/dashboard/layout.ts
+./.next/types/app/page.ts
+./.next/types/app/layout.ts
+./.next/types/app/api/trip-dates/route.ts
+./.next/types/app/api/trips/route.ts
+./.next/types/app/api/trips/[id]/route.ts
+./.next/types/cache-life.d.ts
+./.next/types/package.json
+./.next/react-loadable-manifest.json
+./.next/build-manifest.json
+./.next/server/pages-manifest.json
+./.next/server/edge-runtime-webpack.js
+./.next/server/next-font-manifest.js
+./.next/server/_error.js
+./.next/server/interception-route-rewrite-manifest.js
+./.next/server/server-reference-manifest.js
+./.next/server/app/page.js
+./.next/server/app/page_client-reference-manifest.js
+./.next/server/app/dashboard/page.js
+./.next/server/app/dashboard/page_client-reference-manifest.js
+./.next/server/app/dashboard/reisen/page.js
+./.next/server/app/dashboard/reisen/page_client-reference-manifest.js
+./.next/server/app/dashboard/reisen/[id]/termine/neu/page.js
+./.next/server/app/dashboard/reisen/[id]/termine/neu/page_client-reference-manifest.js
+./.next/server/app/dashboard/reisen/[id]/termine/page.js
+./.next/server/app/dashboard/reisen/[id]/termine/page_client-reference-manifest.js
+./.next/server/app/dashboard/reisen/[id]/page.js
+./.next/server/app/dashboard/reisen/[id]/page_client-reference-manifest.js
+./.next/server/app/dashboard/reisen/editor/page.js
+./.next/server/app/dashboard/reisen/editor/page_client-reference-manifest.js
+./.next/server/app/api/trip-dates/route.js
+./.next/server/app/api/trip-dates/route_client-reference-manifest.js
+./.next/server/app/api/trips/route.js
+./.next/server/app/api/trips/route_client-reference-manifest.js
+./.next/server/app/api/trips/[id]/route.js
+./.next/server/app/api/trips/[id]/route_client-reference-manifest.js
+./.next/server/app/_not-found/page.js
+./.next/server/app/_not-found/page_client-reference-manifest.js
+./.next/server/middleware-manifest.json
+./.next/server/middleware-react-loadable-manifest.js
+./.next/server/app-paths-manifest.json
+./.next/server/static/webpack/633457081244afec._.hot-update.json
+./.next/server/middleware.js
+./.next/server/webpack-runtime.js
+./.next/server/vendor-chunks/tslib.js
+./.next/server/vendor-chunks/@swc.js
+./.next/server/vendor-chunks/class-variance-authority.js
+./.next/server/vendor-chunks/whatwg-url.js
+./.next/server/vendor-chunks/tr46.js
+./.next/server/vendor-chunks/webidl-conversions.js
+./.next/server/vendor-chunks/next.js
+./.next/server/vendor-chunks/tailwind-merge.js
+./.next/server/vendor-chunks/cookie.js
+./.next/server/vendor-chunks/clsx.js
+./.next/server/vendor-chunks/@supabase.js
+./.next/server/vendor-chunks/@radix-ui.js
+./.next/server/pages/_error.js
+./.next/server/pages/_app.js
+./.next/server/pages/_document.js
+./.next/server/middleware-build-manifest.js

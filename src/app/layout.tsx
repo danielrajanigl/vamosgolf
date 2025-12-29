@@ -1,4 +1,5 @@
 import './globals.css'
+import { ShopNav } from '@/components/ShopNav'
 
 export default function RootLayout({
   children,
@@ -7,7 +8,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="de">
-      <body>{children}</body>
+      <body>
+        <ShopNav />
+        {children}
+      </body>
     </html>
   )
 }
